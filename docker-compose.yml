@@ -1,0 +1,29 @@
+# foodSnapAgent 容器编排
+# 启动：docker compose up -d
+# 停止：docker compose down
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: foodsnap-qdrant
+    ports:
+      - "6333:6333"  # REST API（Python 代码用这个）
+      - "6334:6334"  # gRPC（内部通信，可选）
+    volumes:
+      - ./data/qdrant_storage:/qdrant/storage  # 向量数据持久化到本地
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    networks:
+      - foodsnap-net
+    restart: unless-stopped
+
+  # SQLite 不需要容器 —— 它是嵌入式数据库，SQLModel 直接在 Python 进程内读写。
+  # 数据文件位置：./data/food_snap.db（由 config.py 的 SQLITE_DB_PATH 控制）
+
+  # 将来可扩展：
+  # embedding-service:   独立的 embedding 模型服务（如果有 GPU）
+  # redis:               缓存层（如果需要）
+
+networks:
+  foodsnap-net:
+    driver: bridge
