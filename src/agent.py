@@ -8,6 +8,7 @@ import time
 import uuid
 import httpx
 from pydantic_ai import Agent
+from pydantic_ai.usage import UsageLimits
 from src.config import (
     text_model, AMAP_API_KEY, QDRANT_HOST, QDRANT_PORT,
     MAX_REACT_STEPS,
@@ -128,7 +129,7 @@ async def process_request(
     agent_result = await main_agent.run(
         prompt,
         deps=deps,
-        usage_limits={"request_limit": MAX_REACT_STEPS},
+        usage_limits=UsageLimits(request_limit=MAX_REACT_STEPS),
     )
     # ===== 第4步：文案生成（如果用户要发朋友圈） =====
     article = None
@@ -138,7 +139,7 @@ async def process_request(
         "文案" in intent or
         "朋友圈" in intent or
         "发圈" in intent or
-        "需要生成文案" in str(agent_result.data).lower()
+        "需要生成文案" in str(agent_result.output).lower()
     )
     if needs_article:
         # 从 Agent 结果中推断用户风格偏好

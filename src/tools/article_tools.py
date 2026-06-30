@@ -52,7 +52,7 @@ async def article_generate(
             prompt += f"{i}. {h}\n"
 
     result = await agent.run(prompt)
-    return result.data
+    return result.output
 
 
 async def article_reflect_and_rewrite(
@@ -98,7 +98,7 @@ Hashtag：{', '.join(article.hashtags)}
 请反思并重写。"""
 
     result = await reflect_agent.run(prompt)
-    return result.data
+    return result.output
 
 
 async def article_generate_with_reflection(

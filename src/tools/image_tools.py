@@ -40,7 +40,7 @@ async def image_analyze(image_url: str) -> list[DishItem]:
     """
 
     result = await agent.run([ImageUrl(url=image_url), prompt])
-    return result.data
+    return result.output
 
 
 async def image_quality_check(image_url: str) -> dict:
@@ -60,4 +60,4 @@ async def image_quality_check(image_url: str) -> dict:
     prompt = "这张食物图片适合发朋友圈吗？如果不行，怎么改进？"
 
     result = await agent.run([ImageUrl(url=image_url), prompt])
-    return {"is_good": True, "suggestion": result.data}
+    return {"is_good": True, "suggestion": result.output}
