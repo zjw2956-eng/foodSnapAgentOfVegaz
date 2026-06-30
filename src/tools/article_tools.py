@@ -1,4 +1,5 @@
 """文案生成工具 —— Agent 的"笔"，生成朋友圈文案 + Reflection 质量把关"""
+
 from pydantic_ai import Agent
 from src.config import text_model
 from src.models.schemas import ArticleItem
@@ -13,8 +14,7 @@ async def article_generate(
 ) -> ArticleItem:
     """生成朋友圈文案，带自评质量分。
 
-    使用 PydanticAI Agent + result_type=ArticleItem，
-
+    使用 PydanticAI Agent + output_type=ArticleItem，
     框架自动解析结构化输出（文案正文、风格、Hashtag、质量分、最佳发布时间）。
 
     Args:
@@ -28,7 +28,7 @@ async def article_generate(
     """
     agent = Agent(
         text_model,
-        result_type=ArticleItem,
+        output_type=ArticleItem,
         system_prompt=f"""你是美食朋友圈文案达人。为用户生成一条吸引人的朋友圈文案。
 
 要求：
@@ -50,6 +50,7 @@ async def article_generate(
         prompt += f"\n用户之前的优秀文案参考（学习风格但不要照抄）：\n"
         for i, h in enumerate(user_history[:3], 1):
             prompt += f"{i}. {h}\n"
+
     result = await agent.run(prompt)
     return result.data
 
@@ -78,7 +79,7 @@ async def article_reflect_and_rewrite(
     # 不达标，让模型反思问题并重写
     reflect_agent = Agent(
         text_model,
-        result_type=ArticleItem,
+        output_type=ArticleItem,
         system_prompt=f"""你是文案质检员。下面是一条不够好的美食朋友圈文案（质量分 {article.quality_score}）。
 请找出它的具体问题（太普通/没记忆点/风格不符/Hashtag不合适），
 然后重写一条更好的，风格必须是：{user_style}。
@@ -106,8 +107,7 @@ async def article_generate_with_reflection(
     user_style: str = "吃货风",
     user_history: list[str] | None = None,
 ) -> ArticleItem:
-    """完整流程：生成 → 反思 → （不达标）重写，最多重试
-    MAX_REFLECTION_RETRIES 次。
+    """完整流程：生成 → 反思 → （不达标）重写，最多重试 MAX_REFLECTION_RETRIES 次。
 
     这是给 Agent 主流程调用的入口，封装了 Reflection 循环逻辑。
     面试亮点：体现"感知→执行→再感知"的 Agent 本质。
@@ -126,7 +126,7 @@ async def article_generate_with_reflection(
     for attempt in range(MAX_REFLECTION_RETRIES):
         if best.quality_score >= 7.0:
             break
-        candidate = await article_reflect_and_rewrite(best, dish_name,user_style)
+        candidate = await article_reflect_and_rewrite(best, dish_name, user_style)
         if candidate.quality_score >= best.quality_score:
             best = candidate
     return best

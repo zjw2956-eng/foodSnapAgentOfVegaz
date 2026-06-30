@@ -21,24 +21,21 @@ from pydantic_ai import Agent
 async def image_analyze(image_url: str) -> list[DishItem]:
     """分析食物图片，识别图中所有菜品。
 
-    使用 PydanticAI Agent + ImageUrl 原生多模态支持，
-    框架自动处理消息拼接和结构化输出验证。
-
     Args:
         image_url: 食物图片的 URL
 
     Returns:
-        识别出的菜品列表，已自动验证为 list[DishItem]
+        识别出的菜品列表
     """
     agent = Agent(
         vision_model,
-        result_type=list[DishItem],
+        output_type=list[DishItem],
         system_prompt="你是专业美食识别助手，分析食物图片，识别所有菜品、食材和菜系。",
     )
 
     prompt = """请分析这张食物图片：
     1. 逐个列出图中所有菜品
-    2. 每个菜给出菜名、食材(3-5种)、菜系、置信度
+    2. 每个菜给出菜名、食材(3-5种)、菜系、置信度(0~1)
     3. 图片质量差也要尽力识别，标注较低置信度
     """
 

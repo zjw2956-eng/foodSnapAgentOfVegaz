@@ -1,7 +1,7 @@
 """FastAPI 路由 —— Java 主服务调用的 HTTP 入口"""
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from contextlib import asynccontextmanager
 
 from src.config import SQLITE_DB_PATH, QDRANT_HOST, QDRANT_PORT, REQUEST_TIMEOUT
@@ -17,7 +17,7 @@ _http_client: httpx.AsyncClient | None = None
 
 
 @asynccontextmanager
-async def lifespan():
+async def lifespan(app: FastAPI):
     """应用启动/关闭时的资源管理。
 
     启动时创建 MemoryManager 和 httpx.AsyncClient 单例，

@@ -1,17 +1,23 @@
 import os
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic_ai.providers.deepseek import DeepSeekProvider
+# TODO: 后续可能切换 DeepSeek，暂保留引用
+# from pydantic_ai.providers.deepseek import DeepSeekProvider
 from dotenv import load_dotenv
 
-load_dotenv()  # 自动找当前目录的 .env 文件，把里面的 KEY=VALUE加载为环境变量
-# ======================LLM模型配置=================
-DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "your-api-key-here")
-DASHSCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+load_dotenv(override=True)  # override=True：.env 的值覆盖系统环境变量
 
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "your-api-key-here")
+
+# ======================LLM模型配置=================
+DASHSCOPE_BASE_URL = os.getenv("DASHSCOPE_BASE_URL", "your-base-url-here")
+DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "your-api-key-here")
+
+
+# TODO: 后续可能切换 DeepSeek 官方 API，暂保留
+# DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "your-api-key-here")
 
 # 多模态模型（图片识别 + 文案生成）
+# ponytail: qwen3.7-plus 思考模式不支持 tool_choice=required，回退到 qwen-vl-plus
 vision_model = OpenAIChatModel(
     "qwen-vl-plus",
     provider=OpenAIProvider(
@@ -20,10 +26,19 @@ vision_model = OpenAIChatModel(
     ),
 )
 
-# 纯文本模型（规划/反思 可用更便宜的模型）
+# 纯文本模型（规划/反思 用阿里云百炼托管的 DeepSeek-V4-Flash）
+# TODO: 后续可切换为 DeepSeek 官方直连：
+# text_model = OpenAIChatModel(
+#     "deepseek-chat",
+#     provider=DeepSeekProvider(api_key=DEEPSEEK_API_KEY),
+# )
+# ponytail: deepseek-v4 同样不支持 tool_choice=required，改用 qwen-plus
 text_model = OpenAIChatModel(
-    "deepseek-chat",
-    provider=DeepSeekProvider(api_key=DEEPSEEK_API_KEY),
+    "qwen-plus",
+    provider=OpenAIProvider(
+        base_url=DASHSCOPE_BASE_URL,
+        api_key=DASHSCOPE_API_KEY,
+    ),
 )
 
 # =======================高德地图配置=================
