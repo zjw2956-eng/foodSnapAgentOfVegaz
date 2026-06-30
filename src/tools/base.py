@@ -1,7 +1,10 @@
 """工具系统基类 -- 依赖注入容器+工具注册中心"""
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 import httpx
+
+if TYPE_CHECKING:
+    from src.memory.manager import MemoryManager
 
 """@dataclass
 Python 标准库的数据类，自动生成 __init__，比普通
@@ -29,6 +32,7 @@ class AgentDeps:
     user_id: str
     image_url: str
     intent: Optional[str] = None
+    location: Optional[str] = None
 
     # API密钥
     amap_api_key: str = ""
@@ -37,6 +41,9 @@ class AgentDeps:
 
     # 共享的 HTTP 客户端（复用连接池，不要每次请求都 new 一个）
     http_client: Optional[httpx.AsyncClient] = None
+
+    # 记忆管理器（SQLite + Qdrant）
+    memory_manager: Optional["MemoryManager"] = None
 
 
 # ==================== 工具注册中心 ====================

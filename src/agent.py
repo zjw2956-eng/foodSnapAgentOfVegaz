@@ -8,6 +8,7 @@ import time
 import uuid
 import httpx
 from pydantic_ai import Agent
+from pydantic_ai.messages import ToolReturnPart
 from pydantic_ai.usage import UsageLimits
 from src.config import (
     text_model, AMAP_API_KEY, QDRANT_HOST, QDRANT_PORT,
@@ -24,7 +25,7 @@ from src.tools.map_tools import (
     amap_walking_direction,
 )
 from src.tools.article_tools import article_generate_with_reflection
-from src.models.schemas import AnalysisRequest, AnalysisResponse
+from src.models.schemas import AnalysisRequest, AnalysisResponse, NutritionItem
 from src.memory.manager import MemoryManager
 
 # ==================== 主 Agent ====================
@@ -94,10 +95,12 @@ async def process_request(
         user_id=request.user_id,
         image_url=request.image_url,
         intent=request.intent,
+        location=request.location,
         amap_api_key=AMAP_API_KEY,
         qdrant_host=QDRANT_HOST,
         qdrant_port=QDRANT_PORT,
         http_client=http_client,
+        memory_manager=memory_manager,
     )
     # ===== 第3步：Agent 自主推理 =====
     dish_names = [d.name for d in confident_dishes]
@@ -109,14 +112,15 @@ async def process_request(
     prompt = f"""用户上传了一张食物图片，已识别出以下菜品：{', '.join(dish_names)}
 
 用户意图：{request.intent or '未指定（自由发挥）'}
+用户位置：{request.location or '未知（无法搜索附近餐厅）'}
 
 当前已知信息：
 - 主要食材：{', '.join(ingredients_all[:10]) if ingredients_all else '待分析'}
 - 涉及菜系：{', '.join(cuisine_types) if cuisine_types else '待分析'}
 
 请根据用户意图行动：
+- 如果用户想找附近餐厅且有位置 → 用高德地图搜索附近同款餐厅（关键词用"菜系+核心食材"，如"中式烧烤""川菜火锅"，不要直接用菜品名）
 - 如果用户想发朋友圈 → 先查用户画像和文案偏好，然后告诉我"需要生成文案"
-- 如果用户想找附近餐厅 → 先查用户口味偏好，再搜附近地图
 - 如果未指定意图 → 先识别菜品、查用户历史，然后问用户想干什么
 
 完成后，总结你做了什么，包括：
@@ -168,11 +172,29 @@ async def process_request(
     # ===== 第6步：组装响应 =====
     processing_time_ms = int((time.time() - start_time) * 1000)
 
+    # 从 Agent 工具调用结果中提取餐厅数据
+    restaurants: list = []
+    for msg in agent_result.all_messages():
+        for part in msg.parts:
+            if isinstance(part, ToolReturnPart) and part.tool_name == 'amap_search_nearby_restaurants':
+                if isinstance(part.content, list):
+                    restaurants = part.content
+                    break
+        if restaurants:
+            break
+
+    # RAG 菜品知识检索 —— 填充 nutrition
+    nutrition = None
+    if dish_names:
+        knowledge = memory_manager.search_dish_knowledge(dish_names[0], limit=1)
+        if knowledge:
+            nutrition = NutritionItem(**knowledge[0])
+
     return AnalysisResponse(
         request_id=request_id,
         dishes=confident_dishes,
-        nutrition=None,   # 后面 RAG 接入后填充
+        nutrition=nutrition,
         article=article,
-        restaurants=[],   # ponytail: 后面从 agent_result 提取工具调用结果
+        restaurants=restaurants,
         processing_time_ms=processing_time_ms,
     )

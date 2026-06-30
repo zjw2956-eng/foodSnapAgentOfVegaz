@@ -65,18 +65,39 @@ async def amap_search_nearby_restaurants(
         "page": 1,
         "extensions": "all",
     })
+    # 高德 POI 类型码 → 餐厅类别名
+    _TYPE_MAP = {
+        "050100": "中餐厅", "050200": "外国餐厅", "050300": "快餐厅",
+        "050400": "咖啡厅", "050500": "茶艺馆", "050600": "甜品店",
+    }
+
     restaurants = []
     for poi in data.get("pois", []):
-        cost = poi.get("biz_ext", {}).get("cost", "0")
+        biz = poi.get("biz_ext", {})
+        cost = biz.get("cost", "0")
         price = f"人均{cost}元" if cost and cost != "0" else "人均未知"
+        rating = float(biz.get("rating", 0) or 0)
+        distance = int(poi.get("distance", 0) or 0)
+        walk_min = max(1, round(distance / 80))  # 步行速度80m/min
+
+        # 推荐理由：融合距离、评分、价位、区域信息
+        parts = [f"步行约{walk_min}分钟"]
+        if rating > 0:
+            parts.append(f"评分{rating}")
+        parts.append(price)
+        poi_type = _TYPE_MAP.get(poi.get("type", ""), "")
+        if poi_type:
+            parts[-1] = f"{poi_type}·{parts[-1]}"
+        reason = f"距你{poi.get('distance','?')}米（{'，'.join(parts)}）"
+
         restaurants.append(RestaurantItem(
             name=poi.get("name", "未知餐厅"),
             address=poi.get("address", "") or poi.get("pname", ""),
-            distance=int(poi.get("distance", 0) or 0),
-            rating=float(poi.get("biz_ext", {}).get("rating", 0) or 0),
+            distance=distance,
+            rating=rating,
             price_level=price,
             has_similar_dish=True,
-            recommendation_reason=f"附近{poi.get('distance','?')}米的{poi.get('name', '餐厅')}",
+            recommendation_reason=reason,
             must_try_dishes=[],
         ))
     # 按距离升序

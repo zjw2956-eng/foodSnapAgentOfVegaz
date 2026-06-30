@@ -44,6 +44,11 @@ text_model = OpenAIChatModel(
 # =======================高德地图配置=================
 AMAP_API_KEY = os.getenv("AMAP_API_KEY", "your-amap-key-here")
 
+# =====================Embedding 配置===================
+# OpenAI 兼容模式，复用 DASHSCOPE_BASE_URL + /embeddings
+DASHSCOPE_EMBEDDING_MODEL = os.getenv("DASHSCOPE_EMBEDDING_MODEL", "text-embedding-v4")
+DASHSCOPE_EMBEDDING_DIM = int(os.getenv("DASHSCOPE_EMBEDDING_DIM", "1024"))
+
 # =====================Qdrant配置===================
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))

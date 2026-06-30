@@ -58,7 +58,7 @@
   工具怎么注册
 
   main_agent = Agent(
-      text_model,                    # deepseek-chat，只管推理
+      text_model,                    # qwen-plus，只管推理
       deps_type=AgentDeps,           # 工具函数通过 ctx.deps 拿到的东西
       tools=[                        # 框架自动做 ReAct 循环
           memory_get_profile,
@@ -89,7 +89,7 @@
   ---
   为什么 image_analyze 不放进 Agent tools？
 
-  两个模型不同——vision_model（Qwen-VL-Plus）看图片，text_model（DeepSeek）做推理。Agent 用便宜的 text_model 做决策，只有必须看图的步骤才调用贵的 vision_model。省      
+  两个模型不同——vision_model（qwen-vl-plus）看图片，text_model（qwen-plus）做推理。Agent 用便宜的 text_model 做决策，只有必须看图的步骤才调用贵的 vision_model。省      
   token。
 
   ---

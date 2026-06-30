@@ -13,6 +13,11 @@ class AnalysisRequest(BaseModel):
         description="用户意图：identify(仅识别) / article(要发朋友圈) / \
             recommend(找附近同款)"
     )
+    location: Optional[str] = Field(
+        default=None,
+        description="用户经纬度，格式 '经度,纬度'（如 '116.397,39.908'），\
+            用于推荐附近餐厅"
+    )
 
 
 class DishItem(BaseModel):
