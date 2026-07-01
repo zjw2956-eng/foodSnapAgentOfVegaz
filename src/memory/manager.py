@@ -4,7 +4,7 @@
     职责分工：Qdrant 负责语义召回（找到是哪个），SQLite 取完整数据。
     """
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime
 from sqlmodel import SQLModel, Session, create_engine, select
 from src.config import (
@@ -12,6 +12,9 @@ from src.config import (
     DASHSCOPE_EMBEDDING_MODEL, DASHSCOPE_EMBEDDING_DIM,
 )
 from src.models.tables import UserProfile, FoodRecord
+
+if TYPE_CHECKING:
+    from qdrant_client import QdrantClient
 
 
 class MemoryManager:
@@ -25,7 +28,7 @@ class MemoryManager:
         self.db_path = db_path or SQLITE_DB_PATH
         self.qdrant_host = qdrant_host
         self.qdrant_port = qdrant_port
-        self._qdrant = None  # QdrantClient，延迟初始化
+        self._qdrant: Optional["QdrantClient"] = None  # 延迟初始化，_ensure_qdrant() 填充
         # SQLModel 引擎（check_same_thread=False 允许跨线程/协程使用）
         self.engine = create_engine(
             f"sqlite:///{self.db_path}",
@@ -117,34 +120,36 @@ class MemoryManager:
             ).all())
 
     # ==================== Qdrant 操作（延迟初始化 + 降级） ====================
-    def _ensure_qdrant(self):
-        """延迟初始化 Qdrant（第一次用时才连）"""
+    def _ensure_qdrant(self) -> "QdrantClient":
+        """延迟初始化 Qdrant（第一次用时才连），返回已就绪的 client"""
         if self._qdrant is not None:
-            return
+            return self._qdrant
 
         from qdrant_client import QdrantClient
         from qdrant_client.http import models
 
         self._qdrant = QdrantClient(
             host=self.qdrant_host, port=self.qdrant_port)
+        client = self._qdrant  # ponytail: 局部别名让类型检查器确认非空
 
         # 创建 Collection（幂等 —— collection 存在就跳过，不会重复向量化）
-        names = [c.name for c in self._qdrant.get_collections().collections]
+        names = [c.name for c in client.get_collections().collections]
         if "user_food_history" not in names:
-            self._qdrant.create_collection(
+            client.create_collection(
                 collection_name="user_food_history",
                 vectors_config=models.VectorParams(
                     size=DASHSCOPE_EMBEDDING_DIM, distance=models.Distance.COSINE
                 ),
             )
         if "dish_knowledge" not in names:
-            self._qdrant.create_collection(
+            client.create_collection(
                 collection_name="dish_knowledge",
                 vectors_config=models.VectorParams(
                     size=DASHSCOPE_EMBEDDING_DIM, distance=models.Distance.COSINE
                 ),
             )
             self._seed_dish_knowledge()
+        return client
 
     def _qdrant_search(self, user_id: str, query_text: str, limit: int) -> list[int]:
         """向量检索：query_text → 向量 → Qdrant 搜索 + user_id 过滤"""
